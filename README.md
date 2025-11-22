@@ -2,19 +2,109 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Гра Престолів: Тіні Вестеросу
 
-This contains everything you need to run your app locally.
+Інтерактивна текстова гра на основі всесвіту "Гра Престолів" з використанням AI.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1TnbS9Rfkdd4qroU0sOhf1HsFV3LEWEyU
+## 🚀 Локальний запуск
 
-## Run Locally
+**Вимоги:** Node.js (версія 18 або вище)
 
-**Prerequisites:**  Node.js
+1. **Встановіть залежності:**
+   ```bash
+   npm install
+   ```
 
+2. **Створіть файл `.env`:**
+   Створіть файл `.env` в кореневій папці проекту і додайте ваш API ключ Gemini:
+   ```
+   GEMINI_API_KEY=ваш_ключ_від_gemini_тут
+   ```
+   ⚠️ **Важливо:** Не завантажуйте файл `.env` на GitHub! Він вже доданий до `.gitignore`.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+3. **Запустіть локальний сервер:**
+   ```bash
+   npm run dev
+   ```
+   Відкрийте браузер за адресою `http://localhost:3000`
+
+## 📦 Збірка для продакшену
+
+Для створення готової версії гри виконайте:
+
+```bash
+npm run build
+```
+
+Це створить папку `dist` з готовими HTML, CSS та JavaScript файлами.
+
+## 🌐 Деплой на GitHub Pages
+
+### Варіант 1: Через GitHub Actions (рекомендовано)
+
+1. Створіть файл `.github/workflows/deploy.yml`:
+```yaml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm install
+      - run: npm run build
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+```
+
+2. Додайте ваш API ключ як секрет в GitHub:
+   - Перейдіть в Settings → Secrets and variables → Actions
+   - Натисніть "New repository secret"
+   - Назва: `GEMINI_API_KEY`
+   - Значення: ваш API ключ
+
+3. Увімкніть GitHub Pages:
+   - Перейдіть в Settings → Pages
+   - Source: Deploy from a branch
+   - Branch: `gh-pages`, folder: `/ (root)`
+
+### Варіант 2: Ручний деплой
+
+1. Зберіть проект:
+   ```bash
+   npm run build
+   ```
+
+2. Завантажте вміст папки `dist` на GitHub:
+   - Створіть гілку `gh-pages` або використайте GitHub Pages
+   - Завантажте всі файли з папки `dist` в корінь репозиторію (або в гілку `gh-pages`)
+
+3. Увімкніть GitHub Pages в налаштуваннях репозиторію
+
+⚠️ **Важливо:** Для роботи на GitHub Pages вам потрібно налаштувати API ключ через GitHub Secrets (Варіант 1) або використати інший спосіб зберігання ключа (наприклад, через змінні середовища на хостингу).
+
+## 📝 Примітки
+
+- Проект використовує Vite для збірки
+- React компоненти компілюються в звичайний JavaScript
+- Всі залежності включаються в зібраний bundle
+- Для роботи потрібен валідний API ключ Gemini
+
+## 🔧 Технології
+
+- React 19
+- TypeScript
+- Vite
+- Google Gemini AI
+- Tailwind CSS

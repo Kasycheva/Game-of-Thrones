@@ -4,8 +4,8 @@ import { Character, StoryNode, HistoryEntry } from "../types";
 import { INITIAL_SYSTEM_PROMPT, HOUSE_NPCS, GAME_CONFIG } from "../constants";
 
 // Initialize Gemini Client
-// Ensure API_KEY is available in your environment variables
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Ensure GEMINI_API_KEY is available in your environment variables
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY || '' });
 
 // Model Definitions
 const TEXT_MODEL = 'gemini-2.5-flash';
