@@ -118,6 +118,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ gameState, onOptionSelec
   const [isMusicMuted, setIsMusicMuted] = useState(false); // Music Mute
   const [isTakingDamage, setIsTakingDamage] = useState(false); // Visual damage feedback
   const [showFinale, setShowFinale] = useState(false);
+  const isInitialLoadRef = useRef(true);
+  const lastHistoryLengthRef = useRef(0);
+  const lastCharacterNameRef = useRef<string | null>(null);
 
   const { character, currentScene, sceneImage, history, turnCount, maxTurns, currentAct, npcPortraits } = gameState;
 
@@ -190,12 +193,57 @@ export const GameScreen: React.FC<GameScreenProps> = ({ gameState, onOptionSelec
     }
   }, [isMusicMuted]);
 
-  // Auto scroll to bottom when history updates
+  // Сброс флага при загрузке новой игры или сохранения (когда меняется персонаж)
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (character && character.name !== lastCharacterNameRef.current) {
+      // Новый персонаж = новая игра или загруженное сохранение
+      isInitialLoadRef.current = true;
+      lastCharacterNameRef.current = character.name;
+      lastHistoryLengthRef.current = history.length;
     }
-  }, [history.length]);
+  }, [character?.name, history.length]);
+
+  // Scroll to top on initial load, auto-scroll to bottom only if user is already near bottom
+  useEffect(() => {
+    if (!scrollRef.current || !character) return;
+
+    // При первой загрузке или загрузке сохранения - прокрутка вверх
+    if (isInitialLoadRef.current) {
+      // Используем двойной requestAnimationFrame для гарантии, что DOM полностью обновлен
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTop = 0;
+          }
+        });
+      });
+      isInitialLoadRef.current = false;
+      lastHistoryLengthRef.current = history.length;
+      return;
+    }
+
+    // Если история увеличилась (добавился новый контент во время игры)
+    if (history.length > lastHistoryLengthRef.current) {
+      const container = scrollRef.current;
+      const scrollHeight = container.scrollHeight;
+      const scrollTop = container.scrollTop;
+      const clientHeight = container.clientHeight;
+      
+      // Проверяем, находится ли пользователь внизу (в пределах 150px от низа для мобильных)
+      const threshold = window.innerWidth < 768 ? 150 : 100;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < threshold;
+      
+      // Автоматически прокручиваем вниз только если пользователь уже был внизу
+      if (isNearBottom && bottomRef.current) {
+        // Небольшая задержка для рендеринга нового контента
+        setTimeout(() => {
+          bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+      
+      lastHistoryLengthRef.current = history.length;
+    }
+  }, [history.length, character]);
 
   // Play Damage Sound & Trigger Visual Effect
   useEffect(() => {
