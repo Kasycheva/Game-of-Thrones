@@ -1,32 +1,111 @@
+// =====================================
+// Gemini REST API for Browser (Vite)
+// =====================================
 
-import { GoogleGenAI, Type } from "@google/genai";
 import { Character, StoryNode, HistoryEntry } from "../types";
 import { INITIAL_SYSTEM_PROMPT, HOUSE_NPCS, GAME_CONFIG } from "../constants";
 
-// Initialize Gemini Client
-// Ensure GEMINI_API_KEY is available in your environment variables
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY || '' });
+// API key from .env (VITE_GEMINI_API_KEY=)
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-// Model Definitions
-const TEXT_MODEL = 'gemini-2.5-flash';
-const IMAGE_MODEL = 'gemini-2.5-flash-image';
+// Models
+const TEXT_MODEL = "gemini-2.0-pro";     // or "gemini-2.5-flash" if you prefer
+const IMAGE_MODEL = "gemini-1.5-flash";  // browser-compatible model
+
+// -------------------------
+// TEXT GENERATION (REST)
+// -------------------------
+async function callGeminiText(prompt: string): Promise<string> {
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }]
+  };
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${TEXT_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!res.ok) {
+    console.error("Text API error:", await res.text());
+    throw new Error("Gemini text generation failed");
+  }
+
+  const json = await res.json();
+  return json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
+
+// -------------------------
+// IMAGE GENERATION (REST)
+// -------------------------
+async function callGeminiImage(prompt: string): Promise<string | null> {
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }]
+  };
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!res.ok) {
+    console.error("Image API error:", await res.text());
+    return null;
+  }
+
+  const json = await res.json();
+  const parts = json?.candidates?.[0]?.content?.parts;
+
+  if (!parts) return null;
+
+  for (const part of parts) {
+    if (part.inlineData?.data) {
+      return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+    }
+  }
+
+  return null;
+}
+
+// =====================================
+// STORY LOGIC
+// =====================================
 
 export const generateStartNode = async (character: Character): Promise<StoryNode> => {
   const availableNPCs = HOUSE_NPCS[character.house].join(", ");
-  
+
   const prompt = `
-    ПОЧАТОК ГРИ (Акт I).
-    Персонаж: ${character.name}, Дім: ${character.house}.
-    Біографія: ${character.bio}.
-    
-    Введи в історію одного з цих персонажів для діалогу або взаємодії: ${availableNPCs}.
-    
-    Почни історію з моменту прибуття персонажа у важливу локацію або отримання важливого листа. 
-    Створи інтригу.
-  `;
+${INITIAL_SYSTEM_PROMPT}
+
+Ти — рушій сюжету. Відповідай СТРОГО JSON.
+
+{
+  "narrative": "...",
+  "visual_description": "...",
+  "options": [{"id":"1","text":"..."}],
+  "health_change": 0,
+  "influence_change": 0,
+  "is_game_over": false
+}
+
+ПОЧАТОК ГРИ (Акт I)
+Персонаж: ${character.name}, Дім: ${character.house}
+Біографія: ${character.bio}
+
+Введи одного NPC у сцену: ${availableNPCs}
+Створи інтригу та першу сцену.
+`;
 
   return await fetchStoryNode([], prompt);
 };
+
 
 export const generateNextTurn = async (
   history: HistoryEntry[],
@@ -35,164 +114,80 @@ export const generateNextTurn = async (
   turnCount: number,
   maxTurns: number
 ): Promise<StoryNode> => {
-  
+
   let pacingInstruction = "";
   let act = "Акт I";
 
   if (turnCount <= GAME_CONFIG.ACTS.ACT_1_END) {
     act = "Акт I (Зав'язка)";
-    pacingInstruction = "Ми ще на початку. Будуй світ і інтриги.";
+    pacingInstruction = "Будуй інтригу.";
   } else if (turnCount <= GAME_CONFIG.ACTS.ACT_2_END) {
     act = "Акт II (Конфлікт)";
-    pacingInstruction = "Піднімай ставки. Ситуація стає небезпечною.";
+    pacingInstruction = "Піднімай ставки.";
   } else {
     act = "Акт III (Кульмінація)";
-    pacingInstruction = "Ми наближаємося до фіналу. Веди до розв'язки. Це вирішальні моменти.";
+    pacingInstruction = "Веди до кульмінації.";
   }
 
   if (turnCount >= maxTurns - 1) {
-    pacingInstruction += " ЦЕ ОСТАННІЙ ХІД. Заверши історію логічним фіналом (успіх або трагедія) на основі вибору гравця. Встанови is_game_over = true.";
+    pacingInstruction += " Це останній хід. Заверши історію, встанови is_game_over=true.";
   }
 
   const prompt = `
-    ХІД: ${turnCount} з ${maxTurns}. ЕТАП: ${act}.
-    Персонаж: ${character.name} (${character.house}).
-    Здоров'я: ${character.health}, Вплив: ${character.influence}.
-    Гравець щойно вибрав: "${lastChoice}".
-    
-    ${pacingInstruction}
-    
-    Продовжуй історію, враховуючи наслідки.
-  `;
+${INITIAL_SYSTEM_PROMPT}
+
+Формат відповіді СТРОГО JSON.
+
+ІСТОРІЯ ДО ЦЬОГО:
+${history.map(h => h.text).join("\n")}
+
+Хід: ${turnCount} з ${maxTurns}
+Персонаж: ${character.name} (${character.house})
+Останній вибір: ${lastChoice}
+
+${pacingInstruction}
+`;
 
   return await fetchStoryNode(history, prompt);
 };
 
-const fetchStoryNode = async (history: HistoryEntry[], currentPrompt: string): Promise<StoryNode> => {
+
+// ----------------------------
+// MAIN STORY PARSER
+// ----------------------------
+async function fetchStoryNode(history: HistoryEntry[], prompt: string): Promise<StoryNode> {
   try {
-    // Construct context from history
-    // Convert HistoryEntry objects into a script-like format for the AI
-    const context = history.map(entry => {
-      if (entry.type === 'dialogue') return `${entry.speaker}: "${entry.text}"`;
-      if (entry.type === 'choice') return `> Гравець: ${entry.text}`;
-      return `(Опис): ${entry.text}`;
-    }).slice(-12).join("\n\n"); // Keep last 12 entries for context
-    
-    const finalPrompt = `
-      ІСТОРІЯ (Контекст):
-      ${context}
-      
-      ---
-      ЗАВДАННЯ:
-      ${currentPrompt}
-    `;
-
-    const response = await ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: finalPrompt,
-      config: {
-        systemInstruction: INITIAL_SYSTEM_PROMPT,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            narrative: { type: Type.STRING },
-            speaker: { type: Type.STRING, nullable: true },
-            dialogue: { type: Type.STRING, nullable: true },
-            visual_description: { type: Type.STRING },
-            options: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  text: { type: Type.STRING },
-                },
-                required: ["id", "text"]
-              }
-            },
-            health_change: { type: Type.INTEGER },
-            influence_change: { type: Type.INTEGER },
-            is_game_over: { type: Type.BOOLEAN },
-            game_over_reason: { type: Type.STRING, nullable: true }
-          },
-          required: ["narrative", "visual_description", "options", "health_change", "influence_change", "is_game_over"]
-        }
-      }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("No text returned from Gemini");
+    const text = await callGeminiText(prompt);
 
     const data = JSON.parse(text) as StoryNode;
     return data;
 
   } catch (error) {
     console.error("Story generation error:", error);
-    // Fallback node to prevent crash
+
     return {
-      narrative: "Туман війни занадто густий... Магія стародавньої Валірії дала збій (API Error). Спробуйте ще раз.",
-      visual_description: "Heavy fog in a dark forest",
+      narrative: "Туман війни занадто густий... Магія Валірії дала збій (API Error). Спробуйте ще раз.",
+      visual_description: "Foggy battlefield",
       speaker: null,
       dialogue: null,
-      options: [{ id: "retry", text: "Спробувати знову" }],
+      options: [{ id: "retry", text: "Спробувати ще раз" }],
       health_change: 0,
       influence_change: 0,
-      is_game_over: false
+      is_game_over: false,
     };
   }
-};
+}
 
-export const generateSceneImage = async (visualDescription: string): Promise<string | null> => {
-  try {
-    const prompt = `Cinematic shot, Game of Thrones style, dark fantasy, realistic, 8k, detailed textures. No text. Scene description: ${visualDescription}`;
-    
-    const response = await ai.models.generateContent({
-      model: IMAGE_MODEL,
-      contents: {
-        parts: [
-          { text: prompt }
-        ]
-      },
-    });
 
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (parts) {
-      for (const part of parts) {
-        if (part.inlineData && part.inlineData.data) {
-           return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-        }
-      }
-    }
-    
-    return null;
-  } catch (error) {
-    console.error("Image generation error:", error);
-    return null;
-  }
-};
+// ----------------------------
+// IMAGE GENERATION EXPORTS
+// ----------------------------
+export const generateSceneImage = async (visualDescription: string) =>
+  await callGeminiImage(
+    `Cinematic dark fantasy scene, Game of Thrones style. No text. ${visualDescription}`
+  );
 
-export const generatePortrait = async (name: string): Promise<string | null> => {
-  try {
-    // Prompt specifically for a character portrait
-    const prompt = `Character portrait of ${name} from Game of Thrones universe. Close-up face shot, oil painting style, dark fantasy, detailed, neutral background, dramatic lighting. No text.`;
-
-    const response = await ai.models.generateContent({
-      model: IMAGE_MODEL,
-      contents: { parts: [{ text: prompt }] },
-    });
-
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (parts) {
-      for (const part of parts) {
-        if (part.inlineData && part.inlineData.data) {
-           return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-        }
-      }
-    }
-    return null;
-  } catch (error) {
-    console.error("Portrait generation error:", error);
-    return null;
-  }
-};
+export const generatePortrait = async (name: string) =>
+  await callGeminiImage(
+    `Portrait of ${name}, Game of Thrones universe, dramatic lighting, fantasy oil painting. No text.`
+  );
