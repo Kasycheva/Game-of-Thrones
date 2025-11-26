@@ -10,6 +10,7 @@
     "deploy": "npm run build && echo 'Сборка завершена! Тепер завантажте папку dist на GitHub Pages'"
   },
   "dependencies": {
+    "@google/genai": "^1.30.0",
     "howler": "2.2.4",
     "lucide-react": "^0.554.0",
     "react": "^19.2.0",
