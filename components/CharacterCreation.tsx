@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Character, House } from '../types';
-import { HOUSE_DATA } from '../constants';
+import { Character, House } from '../shared/types';
+import { HOUSE_DATA } from '../shared/constants';
 import { Button } from './Button';
 import { Shield, User, Crown } from 'lucide-react';
 

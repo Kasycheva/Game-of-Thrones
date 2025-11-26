@@ -1,8 +1,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { GameState, House } from '../types';
+import { GameState, House } from '../shared/types';
 import { Button } from './Button';
-import { GAME_CONFIG, HOUSE_NPCS, SFX_URLS, BGM_URL } from '../constants';
+import { GAME_CONFIG, HOUSE_NPCS, SFX_URLS, BGM_URL } from '../shared/constants';
 import { Heart, Crown, Skull, MessageSquare, Save, Check, LogOut, Volume2, VolumeX, Music, Trophy, Scroll } from 'lucide-react';
 import { Howl } from 'howler';
 

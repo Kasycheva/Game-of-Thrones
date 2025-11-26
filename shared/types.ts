@@ -1,4 +1,3 @@
-
 export enum House {
   STARK = 'Stark',
   LANNISTER = 'Lannister',
@@ -12,8 +11,8 @@ export interface Character {
   name: string;
   house: House;
   bio: string;
-  health: number; // 0-100
-  influence: number; // 0-100
+  health: number;
+  influence: number;
 }
 
 export interface GameOption {
@@ -22,10 +21,10 @@ export interface GameOption {
 }
 
 export interface StoryNode {
-  narrative: string; // The story text (scene description)
-  visual_description: string; // Description for image generation
-  speaker?: string | null; // Name of the NPC speaking (optional)
-  dialogue?: string | null; // The actual spoken text (optional)
+  narrative: string;
+  visual_description: string;
+  speaker?: string | null;
+  dialogue?: string | null;
   options: GameOption[];
   health_change: number;
   influence_change: number;
@@ -52,14 +51,14 @@ export interface HistoryEntry {
 export interface GameState {
   stage: GameStage;
   character: Character | null;
-  history: HistoryEntry[]; // Keep track of structured history
+  history: HistoryEntry[];
   currentScene: StoryNode | null;
   isLoading: boolean;
-  sceneImage: string | null; // Base64 image
+  sceneImage: string | null;
   turnCount: number;
   maxTurns: number;
-  currentAct: string; // "Act I", "Act II", etc.
-  npcPortraits: Record<string, string>; // Cache for NPC avatar images (Name -> Base64)
+  currentAct: string;
+  npcPortraits: Record<string, string>;
 }
 
 export interface SaveFile {
@@ -67,5 +66,6 @@ export interface SaveFile {
   history: HistoryEntry[];
   currentScene: StoryNode;
   turnCount: number;
-  lastSaved: number; // Timestamp
+  lastSaved: number;
 }
+

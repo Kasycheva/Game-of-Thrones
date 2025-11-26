@@ -1,12 +1,12 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Character, GameState, GameStage, HistoryEntry, SaveFile } from './types';
+import { Character, GameState, GameStage, HistoryEntry, SaveFile } from './shared/types';
 import { MainMenu } from './components/MainMenu';
 import { CharacterCreation } from './components/CharacterCreation';
 import { GameScreen } from './components/GameScreen';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { generateStartNode, generateNextTurn, generateSceneImage, generatePortrait } from './services/geminiService';
-import { GAME_CONFIG } from './constants';
+import { GAME_CONFIG } from './shared/constants';
 
 const SAVES_KEY = 'got_saves_v2';
 

@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { Button } from './Button';
-import { Character, House, SaveFile } from '../types';
+import { Character, House, SaveFile } from '../shared/types';
 import { Trash2, User, Clock, ChevronRight } from 'lucide-react';
-import { HOUSE_DATA } from '../constants';
+import { HOUSE_DATA } from '../shared/constants';
 
 interface MainMenuProps {
   onStartNew: () => void;
